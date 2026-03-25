@@ -130,8 +130,8 @@ Notera: Grupperna `cphelptext` och `pagemeta` är exkluderade i båda filerna (m
 
 ## Licens och upphovsrätt
 
-vBulletin och dess MASTER LANGUAGE är upphovsrättsligt skyddade av **vBulletin Solutions, Inc.**  
-Den här AI-genererade översättningsfilen är skapad av **Tomas Tornevall** och distribueras fritt för personal/community-bruk.  
+vBulletin och dess MASTER LANGUAGE är upphovsrättsligt skyddade av **vBulletin Solutions, Inc.**
+Den här AI-genererade översättningsfilen är skapad av **Thomas Tornevall** och distribueras fritt för personal/community-bruk.  
 Denna fil är **inte** officiellt godkänd eller stödd av vBulletin Solutions.
 
 ---
