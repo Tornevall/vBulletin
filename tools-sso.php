@@ -19,6 +19,11 @@ function toolsSsoFail(int $status, string $message): void
     exit;
 }
 
+function toolsSsoHtml(string $value): string
+{
+    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+}
+
 $state = trim((string) ($_GET['state'] ?? ''));
 if ($state === '' || strlen($state) < 32 || strlen($state) > 128 || preg_match('/^[A-Za-z0-9]+$/', $state) !== 1) {
     toolsSsoFail(400, 'Invalid SSO state.');
@@ -30,7 +35,13 @@ if ($callbackUrl === '') {
     $callbackUrl = 'https://tools.tornevall.com/login/sso/vbulletin/callback';
 }
 
-if ($secret === '') {
+$callbackParts = parse_url($callbackUrl);
+if (
+    $secret === ''
+    || !is_array($callbackParts)
+    || strtolower((string) ($callbackParts['scheme'] ?? '')) !== 'https'
+    || trim((string) ($callbackParts['host'] ?? '')) === ''
+) {
     toolsSsoFail(503, 'Tools SSO is not configured.');
 }
 
@@ -75,12 +86,25 @@ if (!is_string($json)) {
 
 $payload = toolsSsoBase64UrlEncode($json);
 $signature = hash_hmac('sha256', $payload, $secret);
-$query = http_build_query([
-    'state' => $state,
-    'payload' => $payload,
-    'sig' => $signature,
-], '', '&', PHP_QUERY_RFC3986);
 
-$separator = str_contains($callbackUrl, '?') ? '&' : '?';
-header('Location: ' . $callbackUrl . $separator . $query, true, 302);
-exit;
+header('Content-Type: text/html; charset=UTF-8');
+header('Cache-Control: no-store, max-age=0');
+header('Referrer-Policy: no-referrer');
+?>
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="robots" content="noindex,nofollow">
+    <title>Continue to Tools</title>
+</head>
+<body>
+<form id="tools-sso-handoff" method="post" action="<?= toolsSsoHtml($callbackUrl) ?>">
+    <input type="hidden" name="state" value="<?= toolsSsoHtml($state) ?>">
+    <input type="hidden" name="payload" value="<?= toolsSsoHtml($payload) ?>">
+    <input type="hidden" name="sig" value="<?= toolsSsoHtml($signature) ?>">
+    <noscript><button type="submit">Continue to Tools</button></noscript>
+</form>
+<script>document.getElementById('tools-sso-handoff').submit();</script>
+</body>
+</html>
