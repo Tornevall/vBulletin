@@ -22,6 +22,24 @@ Alla fraser är maskinöversatta med AI (OpenAI) och har inte genomgått manuell
 |-----|-------------|
 | `vbulletin-language.xml` | Originalet – MASTER LANGUAGE (engelska, vBulletin 6.2.0) |
 | `sv-se.xml` | AI-översatt till svenska (sv-SE, vBulletin 6.2.0) |
+| `tools-sso.php` | Liten fristående SSO-brygga från en redan inloggad vBulletin-användare till Tools |
+| `TOOLS-SSO.md` | Kontrakt, säkerhetsgränser och driftsättning för Tools SSO-bryggan |
+
+---
+
+## Tools SSO-brygga
+
+`tools-sso.php` är ett separat tillägg och ändrar inte vBulletins vendor-kod. Den används när en redan inloggad forum-medlem väljer vBulletin som inloggningsmetod i Tools.
+
+Flödet är avsiktligt smalt:
+
+1. Tools skapar ett kortlivat engångs-`state` som är bundet till den webbläsarsession som startade inloggningen.
+2. Forumet verifierar användaren via sin befintliga server-side session.
+3. Bryggan signerar en kortlivad assertion med stabilt forum-`userid`, `state`, audience, timestamps och nonce.
+4. Username och e-post skickas inte i redirecten. Tools hämtar den identiteten via sin betrodda forumintegration efter att signaturen har verifierats.
+5. Callbacken sker som en top-level HTTPS-redirect så Tools kan verifiera den ursprungliga sessionen under normal SameSite=Lax-policy.
+
+Bryggan kräver ett delat signeringssecret i driftsättningsmiljön och kan få callback-URL via miljökonfiguration. Inga riktiga secrets ska lagras i repositoryt. Se `TOOLS-SSO.md` för det fulla kontraktet.
 
 ---
 
@@ -54,7 +72,7 @@ Notera: Grupperna `cphelptext` och `pagemeta` är exkluderade i båda filerna (m
 | `cppermission` | Kontrollpanel – Behörigheter |
 | `cprank` | Kontrollpanel – Rang |
 | `cpuser` | Kontrollpanel – Användare |
-| `cpusergroup` | Kontrollpanel – Användargrupper |
+| `cpusergroup` | Användargrupper |
 | `cron` | Schemalagda uppgifter |
 | `diagnostic` | Diagnostik |
 | `emailbody` | E-postmeddelanden – Brödtext |
@@ -109,7 +127,7 @@ Notera: Grupperna `cphelptext` och `pagemeta` är exkluderade i båda filerna (m
 
 ---
 
-## Installation
+## Installation av språkfilen
 
 1. Logga in på **vBulletin Admin Control Panel**.
 2. Gå till **Languages & Phrases → Add New Language**.
@@ -125,6 +143,7 @@ Notera: Grupperna `cphelptext` och `pagemeta` är exkluderade i båda filerna (m
 - Vissa fraser kan låta formella eller stela jämfört med en manuell översättning.
 - Fraser som innehåller HTML, BBCode eller platshållare (`{1}`, `{2}` osv.) är i de flesta fall korrekt hanterade, men bör verifieras i kritiska e-postmallar och felmeddelanden.
 - Tekniska termer som *thread*, *post*, *infraction*, *usergroup* m.fl. kan vara inkonsekvent översatta.
+- Tools SSO-bryggan kräver motsvarande Tools-side implementation och korrekt driftsättningskonfiguration innan live-inloggning kan användas.
 
 ---
 
@@ -138,5 +157,4 @@ Denna fil är **inte** officiellt godkänd eller stödd av vBulletin Solutions.
 
 ## Bidrag
 
-Hittar du en felöversättning? Öppna ett ärende eller skicka en pull request med korrigering mot rätt `<phrase>`-nod i `sv-se.xml`.
-
+Hittar du en felöversättning eller ett problem i de Tornevall-underhållna integrationsfilerna? Öppna ett ärende eller skicka en pull request med korrigering mot rätt fil.
