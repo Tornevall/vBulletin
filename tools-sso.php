@@ -19,11 +19,6 @@ function toolsSsoFail(int $status, string $message): void
     exit;
 }
 
-function toolsSsoHtml(string $value): string
-{
-    return htmlspecialchars($value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
-}
-
 $state = trim((string) ($_GET['state'] ?? ''));
 if ($state === '' || strlen($state) < 32 || strlen($state) > 128 || preg_match('/^[A-Za-z0-9]+$/', $state) !== 1) {
     toolsSsoFail(400, 'Invalid SSO state.');
@@ -58,10 +53,7 @@ if (empty($userInfo) && isset($GLOBALS['vbulletin']->userinfo) && is_array($GLOB
 }
 
 $userId = (int) ($userInfo['userid'] ?? 0);
-$username = trim((string) ($userInfo['username'] ?? ''));
-$email = strtolower(trim((string) ($userInfo['email'] ?? '')));
-
-if ($userId <= 0 || $email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) === false) {
+if ($userId <= 0) {
     $returnUrl = rawurlencode((string) ($_SERVER['REQUEST_URI'] ?? '/tools-sso.php?state=' . rawurlencode($state)));
     header('Location: /auth/login?url=' . $returnUrl, true, 302);
     exit;
@@ -70,8 +62,6 @@ if ($userId <= 0 || $email === '' || filter_var($email, FILTER_VALIDATE_EMAIL) =
 $issuedAt = time();
 $claims = [
     'userid' => $userId,
-    'username' => $username,
-    'email' => $email,
     'iat' => $issuedAt,
     'exp' => $issuedAt + 120,
     'aud' => 'tools',
@@ -86,25 +76,14 @@ if (!is_string($json)) {
 
 $payload = toolsSsoBase64UrlEncode($json);
 $signature = hash_hmac('sha256', $payload, $secret);
+$query = http_build_query([
+    'state' => $state,
+    'payload' => $payload,
+    'sig' => $signature,
+], '', '&', PHP_QUERY_RFC3986);
 
-header('Content-Type: text/html; charset=UTF-8');
+$separator = str_contains($callbackUrl, '?') ? '&' : '?';
 header('Cache-Control: no-store, max-age=0');
 header('Referrer-Policy: no-referrer');
-?>
-<!doctype html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <meta name="robots" content="noindex,nofollow">
-    <title>Continue to Tools</title>
-</head>
-<body>
-<form id="tools-sso-handoff" method="post" action="<?= toolsSsoHtml($callbackUrl) ?>">
-    <input type="hidden" name="state" value="<?= toolsSsoHtml($state) ?>">
-    <input type="hidden" name="payload" value="<?= toolsSsoHtml($payload) ?>">
-    <input type="hidden" name="sig" value="<?= toolsSsoHtml($signature) ?>">
-    <noscript><button type="submit">Continue to Tools</button></noscript>
-</form>
-<script>document.getElementById('tools-sso-handoff').submit();</script>
-</body>
-</html>
+header('Location: ' . $callbackUrl . $separator . $query, true, 302);
+exit;
